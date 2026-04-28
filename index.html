@@ -1,0 +1,1850 @@
+<!--
+  AI 任务规格化工具 v1.0.0
+  GitHub: https://github.com/你的用户名/ai-task-spec
+  
+  将口语化任务描述转化为专业任务规格书
+  支持多轮澄清、一键复制锚点格式
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 AI任务规格化</title>
+    <style>
+        :root {
+            --bg: #f0f2f5;
+            --sidebar-bg: #ffffff;
+            --chat-bg: #ffffff;
+            --input-bg: #f7f8fa;
+            --user-bubble: #2563eb;
+            --user-bubble-text: #ffffff;
+            --ai-bubble: #f1f5f9;
+            --ai-bubble-text: #1e293b;
+            --border: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+            --radius-sm: 8px;
+            --radius: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+            background: var(--bg);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ========== 主容器 ========== */
+        .app-container {
+            width: 100%;
+            max-width: 1300px;
+            height: 92vh;
+            max-height: 900px;
+            background: var(--chat-bg);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            margin: 0 16px;
+        }
+
+        /* ========== 顶部栏 ========== */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            background: #fafbfc;
+            flex-shrink: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header-icon {
+            font-size: 28px;
+            line-height: 1;
+        }
+        .header-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.3px;
+        }
+        .header-subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 400;
+            margin-left: 4px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: var(--transition);
+            white-space: nowrap;
+            font-family: inherit;
+            letter-spacing: 0.01em;
+        }
+        .btn-outline {
+            background: #fff;
+            border-color: var(--border);
+            color: var(--text-primary);
+        }
+        .btn-outline:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+            box-shadow: var(--shadow-sm);
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            box-shadow: var(--shadow-md);
+        }
+        .btn-sm {
+            padding: 6px 10px;
+            font-size: 12px;
+            border-radius: 6px;
+        }
+        .btn-xs {
+            padding: 4px 8px;
+            font-size: 11px;
+            border-radius: 5px;
+        }
+        .api-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 5px 10px;
+            border-radius: 20px;
+            background: #fef3c7;
+            color: #92400e;
+            white-space: nowrap;
+        }
+        .api-status.connected {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #f59e0b;
+            flex-shrink: 0;
+        }
+        .api-status.connected .status-dot {
+            background: #10b981;
+        }
+
+        /* ========== 主内容区 ========== */
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* ========== 聊天区域 ========== */
+        .chat-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            border-right: 1px solid var(--border);
+            background: #fafbfc;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            scroll-behavior: smooth;
+        }
+        .chat-messages::-webkit-scrollbar {
+            width: 5px;
+        }
+        .chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 10px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        /* 欢迎消息 */
+        .welcome-message {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px 20px;
+            gap: 10px;
+            flex: 1;
+        }
+        .welcome-icon {
+            font-size: 56px;
+            margin-bottom: 8px;
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-12px);
+            }
+        }
+        .welcome-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .welcome-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            max-width: 400px;
+            line-height: 1.6;
+        }
+        .welcome-examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 8px;
+        }
+        .example-chip {
+            padding: 8px 14px;
+            border-radius: 20px;
+            background: #fff;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-primary);
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+        .example-chip:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: #eff6ff;
+            box-shadow: var(--shadow-sm);
+            transform: translateY(-1px);
+        }
+
+        /* 消息气泡 */
+        .message-row {
+            display: flex;
+            width: 100%;
+            animation: fadeInUp 0.35s ease-out;
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .message-row.user {
+            justify-content: flex-end;
+        }
+        .message-row.ai {
+            justify-content: flex-start;
+        }
+        .bubble {
+            max-width: 78%;
+            padding: 12px 16px;
+            border-radius: var(--radius-lg);
+            font-size: 14px;
+            line-height: 1.65;
+            word-break: break-word;
+            position: relative;
+            box-shadow: var(--shadow-sm);
+        }
+        .bubble.user {
+            background: var(--user-bubble);
+            color: var(--user-bubble-text);
+            border-bottom-right-radius: 6px;
+        }
+        .bubble.ai {
+            background: #ffffff;
+            color: var(--ai-bubble-text);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 6px;
+            box-shadow: var(--shadow);
+        }
+        .bubble-sender {
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            opacity: 0.75;
+            letter-spacing: 0.02em;
+        }
+        .bubble-time {
+            font-size: 10px;
+            opacity: 0.55;
+            margin-top: 6px;
+            text-align: right;
+        }
+        .bubble.user .bubble-time {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* 加载动画 */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 12px 16px;
+        }
+        .typing-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #94a3b8;
+            animation: typingBounce 1.4s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes typingBounce {
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+                opacity: 0.5;
+            }
+            30% {
+                transform: translateY(-8px);
+                opacity: 1;
+            }
+        }
+
+        /* ========== 输入区域 ========== */
+        .input-section {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
+            background: #fff;
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            flex-shrink: 0;
+        }
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            background: var(--input-bg);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            transition: var(--transition);
+            min-height: 44px;
+        }
+        .input-wrapper:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+            background: #fff;
+        }
+        .input-textarea {
+            flex: 1;
+            border: none;
+            background: transparent;
+            resize: none;
+            padding: 10px 14px;
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--text-primary);
+            line-height: 1.5;
+            outline: none;
+            min-height: 24px;
+            max-height: 120px;
+            border-radius: var(--radius-lg);
+            letter-spacing: 0.01em;
+        }
+        .input-textarea::placeholder {
+            color: var(--text-muted);
+        }
+        .input-hint {
+            position: absolute;
+            right: 10px;
+            bottom: 8px;
+            font-size: 10px;
+            color: var(--text-muted);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .input-wrapper:focus-within .input-hint {
+            opacity: 1;
+        }
+        .btn-send {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            flex-shrink: 0;
+            box-shadow: var(--shadow-md);
+        }
+        .btn-send:hover {
+            background: var(--accent-hover);
+            transform: scale(1.05);
+            box-shadow: var(--shadow-lg);
+        }
+        .btn-send:active {
+            transform: scale(0.95);
+            transition: 0.1s;
+        }
+        .btn-send:disabled {
+            background: #cbd5e1;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* ========== 右侧模板面板 ========== */
+        .template-section {
+            width: 380px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            overflow: hidden;
+        }
+        .template-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            background: #fafbfc;
+        }
+        .template-header-title {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .template-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .template-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .template-content::-webkit-scrollbar {
+            width: 4px;
+        }
+        .template-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .template-content::-webkit-scrollbar-thumb {
+            background: #e2e8f0;
+            border-radius: 8px;
+        }
+        .template-placeholder {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--text-muted);
+            gap: 8px;
+            padding: 30px;
+        }
+        .template-placeholder-icon {
+            font-size: 48px;
+            opacity: 0.6;
+        }
+        .template-placeholder-text {
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .field-card {
+            background: #f8fafc;
+            border-radius: var(--radius);
+            padding: 10px 14px;
+            border: 1px solid #f1f5f9;
+            transition: var(--transition);
+        }
+        .field-card:hover {
+            border-color: #e2e8f0;
+            box-shadow: var(--shadow-sm);
+        }
+        .field-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .field-value {
+            font-size: 13px;
+            color: var(--text-primary);
+            line-height: 1.5;
+            word-break: break-word;
+        }
+        .field-value.steps-list {
+            padding-left: 16px;
+            list-style-type: decimal;
+        }
+        .field-value.steps-list li {
+            margin-bottom: 3px;
+            padding-left: 2px;
+        }
+        .tag-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            margin: 2px 4px 2px 0;
+            background: #eff6ff;
+            color: #2563eb;
+        }
+        .priority-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .priority-high {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+        .priority-medium {
+            background: #fefce8;
+            color: #ca8a04;
+        }
+        .priority-low {
+            background: #f0fdf4;
+            color: #16a34a;
+        }
+        .template-empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #cbd5e1;
+            gap: 6px;
+        }
+        .template-empty-state .icon {
+            font-size: 52px;
+            opacity: 0.5;
+        }
+
+        /* ========== 设置弹窗 ========== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.5);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease-out;
+            backdrop-filter: blur(3px);
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        .modal-dialog {
+            background: #fff;
+            border-radius: var(--radius-xl);
+            padding: 24px 28px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.3s ease-out;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        .modal-dialog::-webkit-scrollbar {
+            width: 4px;
+        }
+        .modal-dialog::-webkit-scrollbar-thumb {
+            background: #e2e8f0;
+            border-radius: 8px;
+        }
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .form-group {
+            margin-bottom: 14px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            letter-spacing: 0.02em;
+        }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-family: inherit;
+            color: var(--text-primary);
+            transition: var(--transition);
+            background: #fafbfc;
+            letter-spacing: 0.01em;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.06);
+            background: #fff;
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 70px;
+            font-size: 12px;
+        }
+        .form-group .input-password-wrapper {
+            position: relative;
+        }
+        .form-group .input-password-wrapper input {
+            padding-right: 44px;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 6px 8px;
+            border-radius: 4px;
+            color: #94a3b8;
+            transition: var(--transition);
+        }
+        .toggle-password:hover {
+            color: #64748b;
+            background: #f1f5f9;
+        }
+        .form-hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 3px;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        .test-result {
+            font-size: 12px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+            display: none;
+            font-weight: 500;
+        }
+        .test-result.success {
+            display: block;
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .test-result.error {
+            display: block;
+            background: #fef2f2;
+            color: #991b1b;
+        }
+        .test-result.loading {
+            display: block;
+            background: #eff6ff;
+            color: #1e40af;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #1e293b;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 200;
+            transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            box-shadow: var(--shadow-lg);
+            letter-spacing: 0.01em;
+        }
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+        .toast.success {
+            background: #065f46;
+        }
+        .toast.error {
+            background: #991b1b;
+        }
+
+        /* 响应式 */
+        @media (max-width: 900px) {
+            .template-section {
+                width: 300px;
+            }
+            .bubble {
+                max-width: 88%;
+            }
+        }
+        @media (max-width: 700px) {
+            .app-container {
+                height: 100vh;
+                max-height: 100vh;
+                border-radius: 0;
+                margin: 0;
+            }
+            .main-content {
+                flex-direction: column;
+            }
+            .chat-section {
+                border-right: none;
+                flex: 2;
+            }
+            .template-section {
+                width: 100%;
+                flex: 1;
+                border-top: 1px solid var(--border);
+                max-height: 40%;
+            }
+            .header-subtitle {
+                display: none;
+            }
+            .bubble {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==================== 主容器 ==================== -->
+    <div class="app-container" id="appContainer">
+
+        <!-- 顶部栏 -->
+        <div class="header">
+            <div class="header-left">
+                <span class="header-icon">🎯</span>
+                <span class="header-title">AI任务规格化</span>
+                <span class="header-subtitle">· 口语描述 → 多轮澄清 → 专业规格书</span>
+            </div>
+            <div class="header-actions">
+                <span class="api-status" id="apiStatus" title="API连接状态">
+                    <span class="status-dot"></span>
+                    <span id="apiStatusText">未配置API</span>
+                </span>
+                <button class="btn btn-outline btn-sm" onclick="openSettings()" title="API设置">
+                    ⚙️ 设置
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="clearChat()" title="清空对话">
+                    🗑️ 清空
+                </button>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <!-- 左侧聊天区 -->
+            <div class="chat-section">
+                <div class="chat-messages" id="chatMessages">
+                    <!-- 欢迎消息 -->
+                    <div class="welcome-message" id="welcomeMessage">
+                        <div class="welcome-icon">🤖</div>
+                        <div class="welcome-title">告诉我你想做什么任务</div>
+                        <div class="welcome-subtitle">
+                            用日常口语描述即可，AI会通过多轮澄清帮你生成专业任务规格书
+                        </div>
+                        <div class="welcome-examples">
+                            <span class="example-chip" onclick="useExample(this)">� 把C:/test目录下的Excel测试用例批量补充预期结果</span>
+                            <span class="example-chip" onclick="useExample(this)">� 整理D:/downloads下的文件按类型归类</span>
+                            <span class="example-chip" onclick="useExample(this)">🔍 搜索关于RAG技术的最新资料并汇总</span>
+                            <span class="example-chip" onclick="useExample(this)">📝 分析这个Excel工作簿的表结构和字段</span>
+                        </div>
+                        <div style="margin-top:16px;padding:10px 16px;background:#fef3c7;border-radius:10px;font-size:12px;color:#92400e;max-width:380px;">
+                            💡 首次使用请点击右上角「⚙️ 设置」配置你的 API（密钥仅存储在本地浏览器）
+                        </div>
+                    </div>
+                </div>
+                <!-- 输入区 -->
+                <div class="input-section">
+                    <div class="input-wrapper" id="inputWrapper">
+                        <textarea
+                        class="input-textarea"
+                        id="userInput"
+                        placeholder="用日常口语描述你的任务，例如：帮我把C:/data目录下的Excel文件批量补充测试用例..."
+                        rows="1"
+                        onkeydown="handleKeyDown(event)"
+                        oninput="autoResize()"
+                    ></textarea>
+                    <span class="input-hint">Ctrl+Enter 发送</span>
+                </div>
+                <button class="btn-send" id="btnSend" onclick="sendMessage()" title="发送消息">
+                    ➤
+                </button>
+            </div>
+        </div>
+
+        <!-- 右侧模板面板 -->
+        <div class="template-section">
+            <div class="template-header">
+                <span class="template-header-title">📋 任务规格书</span>
+                <div class="template-actions">
+                    <button class="btn btn-outline btn-xs" onclick="copyTemplate('text')" id="btnCopyText" disabled title="复制为文本">
+                        📄 复制
+                    </button>
+                    <button class="btn btn-outline btn-xs" onclick="copyTemplate('anchor_spec')" id="btnCopyJson" disabled title="复制锚点+规格书格式（可直接粘贴给智能体）">
+                        ⚓ 锚点格式
+                    </button>
+                </div>
+            </div>
+            <div class="template-content" id="templateContent">
+                <div class="template-empty-state" id="templateEmptyState">
+                    <span class="icon">📭</span>
+                    <span style="font-size:13px;color:#94a3b8;">在左侧输入任务描述</span>
+                    <span style="font-size:12px;color:#cbd5e1;">AI会自动生成模板</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 设置弹窗 -->
+<div class="modal-overlay" id="settingsModal" style="display:none;">
+    <div class="modal-dialog">
+        <div class="modal-title">⚙️ API 设置</div>
+        <div class="form-group">
+            <label>API Base URL</label>
+            <input type="text" id="apiBaseUrl" placeholder="https://api.openai.com/v1">
+            <span class="form-hint">支持OpenAI兼容接口（DeepSeek、通义千问、智谱AI等）</span>
+        </div>
+        <div class="form-group">
+            <label>API Key</label>
+            <div class="input-password-wrapper">
+                <input type="password" id="apiKey" placeholder="sk-...">
+                <button class="toggle-password" onclick="togglePasswordVisibility()" title="显示/隐藏">👁️</button>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>模型名称</label>
+            <input type="text" id="modelName" placeholder="gpt-4o-mini / deepseek-chat / qwen-turbo">
+            <span class="form-hint">填写模型名称，如 gpt-4o-mini、deepseek-chat、qwen-turbo 等</span>
+        </div>
+        <div class="form-group">
+            <label>自定义系统提示词（可选）</label>
+            <textarea id="systemPrompt" placeholder="留空则使用默认提示词。自定义可让AI按特定风格生成模板。"></textarea>
+        </div>
+        <div id="testResult" class="test-result"></div>
+        <div class="modal-actions">
+            <button class="btn btn-outline btn-sm" style="margin-right:auto;color:#dc2626;border-color:#fecaca;" onclick="clearAllConfig()">🗑️ 清除所有配置</button>
+            <button class="btn btn-outline btn-sm" onclick="testConnection()">🔍 测试连接</button>
+            <button class="btn btn-outline btn-sm" onclick="closeSettings()">取消</button>
+            <button class="btn btn-primary btn-sm" onclick="saveSettings()">💾 保存设置</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+    const ROUTING_HINT_MAP = {
+        general: { label: '通用任务', color: '#6366f1', bg: '#eef2ff' },
+        file_directory: { label: '文件/目录操作', color: '#0891b2', bg: '#ecfeff' },
+        excel_batch_testcase: { label: 'Excel批量测试用例', color: '#059669', bg: '#ecfdf5' },
+        excel_workbook_analysis: { label: 'Excel表结构分析', color: '#d97706', bg: '#fffbeb' },
+        web_search: { label: '联网搜索', color: '#dc2626', bg: '#fef2f2' },
+    };
+
+    const ANCHOR_TAG = '【任务规格化·原始锚点】';
+    const SPEC_TAG = '【任务规格化·已定稿规格书】';
+
+    const STATE = {
+        config: {
+            apiBaseUrl: '',
+            apiKey: '',
+            modelName: 'gpt-4o-mini',
+            systemPrompt: '',
+        },
+        conversationHistory: [],
+        currentSpec: null,
+        isLoading: false,
+        specPhase: 'idle',
+        originalInstruction: '',
+        specConversation: [],
+        finalizedSpec: null,
+    };
+
+    function init() {
+        loadConfig();
+        updateApiStatus();
+        if (STATE.config.apiKey) {
+            updateApiStatus();
+        }
+        setTimeout(() => {
+            document.getElementById('userInput').focus();
+        }, 300);
+    }
+
+    function loadConfig() {
+        try {
+            const saved = localStorage.getItem('task_template_config');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                STATE.config = { ...STATE.config, ...parsed };
+                document.getElementById('apiBaseUrl').value = STATE.config.apiBaseUrl || '';
+                document.getElementById('apiKey').value = STATE.config.apiKey || '';
+                document.getElementById('modelName').value = STATE.config.modelName || 'gpt-4o-mini';
+                document.getElementById('systemPrompt').value = STATE.config.systemPrompt || '';
+            }
+        } catch (e) {
+            console.warn('加载配置失败:', e);
+        }
+    }
+
+    function saveConfigToStorage() {
+        try {
+            localStorage.setItem('task_template_config', JSON.stringify(STATE.config));
+        } catch (e) {
+            console.warn('保存配置失败:', e);
+        }
+    }
+
+    function updateApiStatus() {
+        const statusEl = document.getElementById('apiStatus');
+        const statusText = document.getElementById('apiStatusText');
+        if (STATE.config.apiKey && STATE.config.apiBaseUrl) {
+            statusEl.classList.add('connected');
+            statusText.textContent = '已配置 · ' + (STATE.config.modelName || '模型');
+        } else if (STATE.config.apiKey) {
+            statusEl.classList.add('connected');
+            statusText.textContent = '已配置Key（需设置URL）';
+        } else {
+            statusEl.classList.remove('connected');
+            statusText.textContent = '未配置API';
+        }
+    }
+
+    function openSettings() {
+        document.getElementById('apiBaseUrl').value = STATE.config.apiBaseUrl || '';
+        document.getElementById('apiKey').value = STATE.config.apiKey || '';
+        document.getElementById('modelName').value = STATE.config.modelName || 'gpt-4o-mini';
+        document.getElementById('systemPrompt').value = STATE.config.systemPrompt || '';
+        document.getElementById('testResult').className = 'test-result';
+        document.getElementById('testResult').textContent = '';
+        document.getElementById('settingsModal').style.display = 'flex';
+    }
+
+    function closeSettings() {
+        document.getElementById('settingsModal').style.display = 'none';
+        document.getElementById('testResult').className = 'test-result';
+        document.getElementById('testResult').textContent = '';
+    }
+
+    function saveSettings() {
+        STATE.config.apiBaseUrl = document.getElementById('apiBaseUrl').value.trim();
+        STATE.config.apiKey = document.getElementById('apiKey').value.trim();
+        STATE.config.modelName = document.getElementById('modelName').value.trim();
+        STATE.config.systemPrompt = document.getElementById('systemPrompt').value.trim();
+        saveConfigToStorage();
+        updateApiStatus();
+        closeSettings();
+        showToast('✅ 设置已保存', 'success');
+    }
+
+    function clearAllConfig() {
+        if (!confirm('确定要清除所有本地配置吗？这将删除保存的API密钥、地址和系统提示词。')) {
+            return;
+        }
+        try {
+            localStorage.removeItem('task_template_config');
+            STATE.config = {
+                apiBaseUrl: '',
+                apiKey: '',
+                modelName: 'gpt-4o-mini',
+                systemPrompt: '',
+            };
+            document.getElementById('apiBaseUrl').value = '';
+            document.getElementById('apiKey').value = '';
+            document.getElementById('modelName').value = 'gpt-4o-mini';
+            document.getElementById('systemPrompt').value = '';
+            updateApiStatus();
+            showToast('🗑️ 所有配置已清除', 'success');
+        } catch (e) {
+            showToast('❌ 清除配置失败', 'error');
+        }
+    }
+
+    function togglePasswordVisibility() {
+        const input = document.getElementById('apiKey');
+        const btn = input.parentElement.querySelector('.toggle-password');
+        if (input.type === 'password') {
+            input.type = 'text';
+            btn.textContent = '🙈';
+        } else {
+            input.type = 'password';
+            btn.textContent = '👁️';
+        }
+    }
+
+    async function testConnection() {
+        const baseUrl = document.getElementById('apiBaseUrl').value.trim();
+        const apiKey = document.getElementById('apiKey').value.trim();
+        const modelName = document.getElementById('modelName').value.trim();
+        const resultEl = document.getElementById('testResult');
+
+        if (!baseUrl || !apiKey) {
+            resultEl.className = 'test-result error';
+            resultEl.textContent = '❌ 请填写API Base URL和API Key';
+            return;
+        }
+
+        resultEl.className = 'test-result loading';
+        resultEl.textContent = '⏳ 正在测试连接...';
+
+        try {
+            const url = baseUrl.replace(/\/+$/, '') + '/chat/completions';
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                    model: modelName || 'gpt-4o-mini',
+                    messages: [{ role: 'user', content: '你好，请回复"连接成功"这两个字。' }],
+                    max_tokens: 20,
+                    temperature: 0,
+                }),
+                signal: AbortSignal.timeout(15000),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                resultEl.className = 'test-result success';
+                resultEl.textContent = '✅ 连接成功！模型响应: ' + (
+                    data.choices?.[0]?.message?.content?.slice(0, 60) || 'OK');
+            } else {
+                const errorText = await response.text();
+                let errorMsg = `HTTP ${response.status}`;
+                try {
+                    const errJson = JSON.parse(errorText);
+                    errorMsg = errJson.error?.message || errJson.message || errorMsg;
+                } catch {
+                    errorMsg = errorText.slice(0, 150);
+                }
+                resultEl.className = 'test-result error';
+                resultEl.textContent = '❌ 连接失败: ' + errorMsg;
+            }
+        } catch (e) {
+            resultEl.className = 'test-result error';
+            if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+                resultEl.textContent = '❌ 请求超时，请检查网络或API地址';
+            } else {
+                resultEl.textContent = '❌ 网络错误: ' + e.message.slice(0, 100);
+            }
+        }
+    }
+
+    document.addEventListener('click', function(e) {
+        const modal = document.getElementById('settingsModal');
+        if (e.target === modal) {
+            closeSettings();
+        }
+    });
+
+    function handleKeyDown(event) {
+        if (event.ctrlKey && event.key === 'Enter') {
+            event.preventDefault();
+            sendMessage();
+        }
+        if (event.key === 'Escape') {
+            closeSettings();
+        }
+    }
+
+    function autoResize() {
+        const textarea = document.getElementById('userInput');
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    }
+
+    function useExample(chip) {
+        const text = chip.textContent.trim();
+        const cleanText = text.replace(/^[\u{1F300}-\u{1FAFF}]\s*/u, '');
+        document.getElementById('userInput').value = cleanText;
+        document.getElementById('userInput').focus();
+        autoResize();
+        setTimeout(() => sendMessage(), 200);
+    }
+
+    function clearChat() {
+        if (STATE.isLoading) return;
+        STATE.conversationHistory = [];
+        STATE.currentSpec = null;
+        STATE.specPhase = 'idle';
+        STATE.originalInstruction = '';
+        STATE.specConversation = [];
+        STATE.finalizedSpec = null;
+        document.getElementById('chatMessages').innerHTML = `
+                    <div class="welcome-message" id="welcomeMessage">
+                        <div class="welcome-icon">🤖</div>
+                        <div class="welcome-title">告诉我你想做什么任务</div>
+                        <div class="welcome-subtitle">
+                            用日常口语描述即可，AI会通过多轮澄清帮你生成专业任务规格书
+                        </div>
+                        <div class="welcome-examples">
+                            <span class="example-chip" onclick="useExample(this)">💼 帮我整理下周的会议材料</span>
+                            <span class="example-chip" onclick="useExample(this)">📚 我想学机器学习但不知道从哪开始</span>
+                            <span class="example-chip" onclick="useExample(this)">🏠 周末大扫除，要把家里彻底清理一遍</span>
+                            <span class="example-chip" onclick="useExample(this)">📝 写一份产品需求文档，关于用户反馈系统</span>
+                        </div>
+                    </div>
+                `;
+        resetTemplatePanel();
+        showToast('🗑️ 对话已清空');
+    }
+
+    function isConfirmMessage(text) {
+        const s = (text || '').trim();
+        if (!s) return false;
+        const low = s.toLowerCase();
+        const token = '(?:确认执行|确认开始|开始执行吧|开始执行|按此执行|就这么办|就这样|没问题|可以的|可以了|开始吧|执行吧|执行|开始|确认|好的|好|可以|行|同意|通过|ok|okay|yes)';
+        if (new RegExp(`^${token}\\s*[!！。.…?？]*$`, 'i').test(low)) return true;
+        const firstLine = s.split('\n', 1)[0].trim();
+        if (new RegExp(`^${token}\\s*[!！。.…?？]*\\s*([，,;；:：、。]|$)`, 'i').test(firstLine)) return true;
+        return false;
+    }
+
+    function isCancelMessage(text) {
+        const s = (text || '').trim();
+        if (!s) return false;
+        return /^(取消|不要了|算了|停止|不用了|放弃)\s*[!！。.…]*$/.test(s);
+    }
+
+    function inferRoutingHint(text) {
+        if (!text) return 'general';
+        const t = text;
+        const tl = t.toLowerCase();
+        const hasTest = (t.includes('测试') && t.includes('用例')) || tl.includes('test case') || tl.replace(/\s/g, '').includes('testcase');
+        const hasSheet = ['.xlsx', '.xls', '.csv', 'excel', '表格', '工作表', '电子表格'].some(k => tl.includes(k));
+        const hasTcFill = ['预期结果', '补充测试', '补全', '完善测试', '增加列', '期望结果', '前置条件'].some(k => t.includes(k));
+        const hasBatch = ['批量', '多份', '10份', '各文件', '每个文件', '目录下', '文件夹下', '遍历', '逐份'].some(k => t.includes(k));
+        const hasFileOp = ['整理', '重命名', '移动', '归类', '生成清单', '文件管理', '目录整理', '文件整理'].some(k => t.includes(k));
+        const hasWebSearch = ['联网搜索', '上网查资料', '网上检索', '搜索引擎', '调研报告', '查公开资料'].some(k => t.includes(k));
+        const hasStructure = ['表格结构', '字段分析', '拆分表格', '数据透视', '工作表结构', '分析excel'].some(k => t.includes(k));
+
+        if (hasTest && (hasSheet || hasTcFill) && (hasBatch || hasSheet)) return 'excel_batch_testcase';
+        if (hasSheet && hasStructure && !(hasTest && hasBatch)) return 'excel_workbook_analysis';
+        if (hasFileOp && !hasTest) return 'file_directory';
+        if (hasWebSearch && !hasSheet) return 'web_search';
+        return 'general';
+    }
+
+    async function sendMessage() {
+        if (STATE.isLoading) return;
+
+        const inputEl = document.getElementById('userInput');
+        const userText = inputEl.value.trim();
+        if (!userText) return;
+
+        if (!STATE.config.apiKey || !STATE.config.apiBaseUrl) {
+            showToast('⚠️ 请先在设置中配置API', 'error');
+            openSettings();
+            return;
+        }
+
+        const welcomeMsg = document.getElementById('welcomeMessage');
+        if (welcomeMsg) {
+            welcomeMsg.style.display = 'none';
+            welcomeMsg.remove();
+        }
+
+        inputEl.value = '';
+        inputEl.style.height = 'auto';
+        STATE.isLoading = true;
+        document.getElementById('btnSend').disabled = true;
+
+        const userTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        addMessageBubble('user', userText, userTime);
+
+        if (STATE.specPhase === 'idle') {
+            STATE.originalInstruction = userText;
+            STATE.specConversation = [];
+            STATE.specPhase = 'clarifying';
+        }
+
+        const loadingId = addTypingIndicator();
+        scrollChatToBottom();
+
+        try {
+            let aiResponse;
+            if (STATE.specPhase === 'clarifying') {
+                STATE.specConversation.push({ role: 'user', text: userText });
+                aiResponse = await callSpecAPI(STATE.originalInstruction, STATE.specConversation);
+                const specData = parseSpecResponse(aiResponse);
+                removeTypingIndicator(loadingId);
+
+                if (specData.need_clarification && specData.questions.length > 0) {
+                    const questionText = specData.questions.map((q, i) => `${i + 1}. ${q}`).join('\n');
+                    const aiTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                    addMessageBubble('ai', '📋 我需要确认几个关键信息：\n\n' + questionText + '\n\n请补充以上信息，或回复"确认"跳过直接生成规格书。', aiTime);
+                    STATE.specConversation.push({ role: 'assistant', text: questionText });
+                    STATE.currentSpec = specData;
+                    renderSpecPreview(specData);
+                } else if (specData.ready && specData.professional_spec) {
+                    STATE.specPhase = 'confirmed';
+                    STATE.finalizedSpec = specData;
+                    const aiTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                    addMessageBubble('ai', '✅ 任务规格书已生成！请查看右侧面板确认。\n\n如需修改请直接说明，确认无误后可复制使用。', aiTime);
+                    STATE.specConversation.push({ role: 'assistant', text: '规格书已生成' });
+                    renderFinalSpec(specData);
+                } else {
+                    const aiTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                    addMessageBubble('ai', '🤔 我需要更多信息才能生成规格书，请补充任务的具体目标、路径或交付物要求。', aiTime);
+                }
+            } else if (STATE.specPhase === 'clarifying' && isConfirmMessage(userText)) {
+                STATE.specConversation.push({ role: 'user', text: userText });
+                aiResponse = await callSpecAPI(STATE.originalInstruction, STATE.specConversation);
+                const specData = parseSpecResponse(aiResponse);
+                removeTypingIndicator(loadingId);
+
+                if (specData.professional_spec) {
+                    STATE.specPhase = 'confirmed';
+                    STATE.finalizedSpec = specData;
+                    const aiTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                    addMessageBubble('ai', '✅ 任务规格书已生成！请查看右侧面板确认。\n\n如需修改请直接说明，确认无误后可复制使用。', aiTime);
+                    renderFinalSpec(specData);
+                } else {
+                    const aiTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                    addMessageBubble('ai', '📋 请再补充一些信息：\n\n' + (specData.questions.length > 0 ? specData.questions.map((q, i) => `${i + 1}. ${q}`).join('\n') : '请描述任务的具体目标、输入输出和约束条件。'), aiTime);
+                    STATE.currentSpec = specData;
+                    renderSpecPreview(specData);
+                }
+            } else if (STATE.specPhase === 'confirmed') {
+                if (isCancelMessage(userText)) {
+                    STATE.specPhase = 'idle';
+                    STATE.finalizedSpec = null;
+                    const aiTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                    addMessageBubble('ai', '🔄 已取消当前规格书，请重新描述你的任务。', aiTime);
+                    resetTemplatePanel();
+                } else {
+                    STATE.specConversation.push({ role: 'user', text: userText });
+                    aiResponse = await callSpecAPI(STATE.originalInstruction, STATE.specConversation);
+                    const specData = parseSpecResponse(aiResponse);
+                    removeTypingIndicator(loadingId);
+
+                    if (specData.professional_spec) {
+                        STATE.finalizedSpec = specData;
+                        const aiTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                        addMessageBubble('ai', '✅ 任务规格书已更新！请查看右侧面板。', aiTime);
+                        renderFinalSpec(specData);
+                    } else {
+                        const aiTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                        addMessageBubble('ai', '🤔 未能更新规格书，请更具体地说明需要修改的内容。', aiTime);
+                    }
+                }
+            } else {
+                STATE.specConversation.push({ role: 'user', text: userText });
+                aiResponse = await callSpecAPI(STATE.originalInstruction, STATE.specConversation);
+                const specData = parseSpecResponse(aiResponse);
+                removeTypingIndicator(loadingId);
+
+                if (specData.need_clarification && specData.questions.length > 0) {
+                    const questionText = specData.questions.map((q, i) => `${i + 1}. ${q}`).join('\n');
+                    const aiTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                    addMessageBubble('ai', '📋 我需要确认几个关键信息：\n\n' + questionText, aiTime);
+                    STATE.currentSpec = specData;
+                    renderSpecPreview(specData);
+                } else if (specData.ready && specData.professional_spec) {
+                    STATE.specPhase = 'confirmed';
+                    STATE.finalizedSpec = specData;
+                    const aiTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                    addMessageBubble('ai', '✅ 任务规格书已生成！请查看右侧面板确认。', aiTime);
+                    renderFinalSpec(specData);
+                }
+            }
+
+            scrollChatToBottom();
+        } catch (error) {
+            removeTypingIndicator(loadingId);
+            const errorMsg = error.message || '未知错误';
+            addMessageBubble('ai', '😞 抱歉，调用AI时出错了：\n' + errorMsg + '\n\n请检查API设置是否正确。',
+                new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }));
+            showToast('❌ ' + errorMsg, 'error');
+            console.error('API调用错误:', error);
+        } finally {
+            STATE.isLoading = false;
+            document.getElementById('btnSend').disabled = false;
+            document.getElementById('userInput').focus();
+        }
+    }
+
+    function addMessageBubble(role, text, time) {
+        const container = document.getElementById('chatMessages');
+        const row = document.createElement('div');
+        row.className = `message-row ${role}`;
+
+        const bubble = document.createElement('div');
+        bubble.className = `bubble ${role}`;
+
+        if (role === 'ai') {
+            const sender = document.createElement('div');
+            sender.className = 'bubble-sender';
+            sender.textContent = '🤖 规格化助手';
+            bubble.appendChild(sender);
+        } else {
+            const sender = document.createElement('div');
+            sender.className = 'bubble-sender';
+            sender.textContent = '👤 你';
+            bubble.appendChild(sender);
+        }
+
+        const textEl = document.createElement('div');
+        textEl.textContent = text;
+        textEl.style.whiteSpace = 'pre-wrap';
+        bubble.appendChild(textEl);
+
+        const timeEl = document.createElement('div');
+        timeEl.className = 'bubble-time';
+        timeEl.textContent = time;
+        bubble.appendChild(timeEl);
+
+        row.appendChild(bubble);
+        container.appendChild(row);
+    }
+
+    function addTypingIndicator() {
+        const container = document.getElementById('chatMessages');
+        const row = document.createElement('div');
+        row.className = 'message-row ai';
+        row.id = 'typing-indicator-row';
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble ai';
+        bubble.style.padding = '10px 16px';
+        const indicator = document.createElement('div');
+        indicator.className = 'typing-indicator';
+        indicator.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+        bubble.appendChild(indicator);
+        row.appendChild(bubble);
+        container.appendChild(row);
+        scrollChatToBottom();
+        return 'typing-indicator-row';
+    }
+
+    function removeTypingIndicator(id) {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+    }
+
+    function scrollChatToBottom() {
+        const container = document.getElementById('chatMessages');
+        requestAnimationFrame(() => {
+            container.scrollTop = container.scrollHeight;
+        });
+    }
+
+    function parseSpecResponse(raw) {
+        const result = {
+            need_clarification: false,
+            questions: [],
+            ready: false,
+            professional_spec: '',
+            routing_hint: 'general',
+        };
+
+        let jsonStr = null;
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            try {
+                JSON.parse(jsonMatch[0]);
+                jsonStr = jsonMatch[0];
+            } catch {
+                try {
+                    const cleaned = jsonMatch[0].replace(/,\s*}/g, '}').replace(/,\s*\]/g, ']')
+                        .replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'");
+                    JSON.parse(cleaned);
+                    jsonStr = cleaned;
+                } catch {}
+            }
+        }
+
+        if (!jsonStr) {
+            result.need_clarification = true;
+            result.questions = ['请用一句话说明要完成的具体目标，以及涉及的文件或目录路径。'];
+            return result;
+        }
+
+        try {
+            const data = JSON.parse(jsonStr);
+            result.need_clarification = bool(data.need_clarification);
+            const qs = data.questions || [];
+            if (Array.isArray(qs)) {
+                result.questions = qs.map(x => String(x).trim()).filter(x => x);
+            }
+            result.ready = bool(data.ready);
+            result.professional_spec = String(data.professional_spec || '').trim();
+            result.routing_hint = normalizeRoutingHint(data.routing_hint);
+
+            if (result.need_clarification && result.questions.length > 0) {
+                result.ready = false;
+            }
+            if (result.ready && !result.professional_spec) {
+                result.ready = false;
+                result.need_clarification = true;
+                if (!result.questions.length) {
+                    result.questions = ['请补充任务交付物与路径说明。'];
+                }
+            }
+        } catch (e) {
+            result.need_clarification = true;
+            result.questions = ['请补充任务涉及的路径、输入输出格式。'];
+        }
+
+        return result;
+    }
+
+    function bool(val) {
+        if (val === true || val === 'true' || val === 1) return true;
+        return false;
+    }
+
+    function normalizeRoutingHint(value) {
+        const v = (value || 'general').trim().toLowerCase().replace(/-/g, '_');
+        const aliases = { files: 'file_directory', filesystem: 'file_directory', file: 'file_directory' };
+        const mapped = aliases[v] || v;
+        if (mapped in ROUTING_HINT_MAP) return mapped;
+        return 'general';
+    }
+
+    async function callSpecAPI(originalInstruction, conversation) {
+        const baseUrl = STATE.config.apiBaseUrl.replace(/\/+$/, '');
+        const url = baseUrl + '/chat/completions';
+
+        const systemPrompt = STATE.config.systemPrompt || getDefaultSystemPrompt();
+
+        const userPayload = buildUserPayload(originalInstruction, conversation);
+
+        const messages = [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPayload },
+        ];
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${STATE.config.apiKey}`,
+            },
+            body: JSON.stringify({
+                model: STATE.config.modelName || 'gpt-4o-mini',
+                messages: messages,
+                max_tokens: 3000,
+                temperature: 0.3,
+            }),
+            signal: AbortSignal.timeout(60000),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errorMsg = `HTTP ${response.status}`;
+            try {
+                const errJson = JSON.parse(errorText);
+                errorMsg = errJson.error?.message || errJson.message || errorMsg;
+            } catch {
+                errorMsg = errorText.slice(0, 200);
+            }
+            throw new Error(errorMsg);
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (!content) {
+            throw new Error('AI返回内容为空');
+        }
+        return content;
+    }
+
+    function buildUserPayload(originalInstruction, conversation) {
+        let lines = [`【用户最初指令】\n${originalInstruction.trim()}\n`];
+        if (conversation && conversation.length > 0) {
+            lines.push('【后续对话】');
+            for (const turn of conversation) {
+                const role = turn.role || 'user';
+                const text = (turn.text || '').trim();
+                if (!text) continue;
+                const tag = role === 'user' ? '用户' : '助手';
+                lines.push(`- ${tag}: ${text}`);
+            }
+        }
+        return lines.join('\n');
+    }
+
+    function getDefaultSystemPrompt() {
+        return `你是「任务规格化」助手。用户常用口语描述任务，你要把需求整理成可交给下游做方案与拆分的专业任务说明。
+
+【铁律·不得偏离原任务】
+A. professional_spec 只能澄清、结构化、补全边界；不得把用户任务改写成另一类主任务。
+   （例如：用户要做「目录下文件按规则整理/重命名/生成清单」，不得改写成「Excel 表结构分析」「数据分析主链」等。）
+B. 用户已给出的路径、文件名模式、操作对象（某目录/某批文件）、交付物形态必须保留；
+   不得虚构路径；信息不足用「待用户确认：…」占位，不得猜测具体路径。
+C. 若用户在后续对话中补充了选择，必须写入规格并与最初指令一并可追溯（可在「注意事项」中引用用户原话要点）。
+
+【措辞·避免误导下游路由】
+D. 描述 JSON/CSV 交付物时：写「JSON 每条记录的字段」「CSV 各列含义」「记录文件 schema」等；
+   避免单独使用「数据结构」四字作为小节标题或关键句（易与「数据分析/表结构」类工作流混淆）。
+E. 若任务是文件系统操作，不要写「提炼数据」「分析表格结构」等除非用户口语里确实要求分析表格内容。
+
+规则：
+1. 若关键信息不足（例如：具体路径、输入/输出、文件类型、范围边界），设 need_clarification 为 true，
+   在 questions 中列出 1～3 条简短中文问题，一次问清。
+2. 若信息已足够写出可执行规格，设 ready 为 true，填写 professional_spec：
+   用分条/小标题组织，建议含：目标、范围、路径与文件约束、交付物、注意事项；
+   开头用两三句「与最初指令一致的摘要」，再展开细节；不要编造用户未提供的路径，可写「待用户确认：…」。
+3. need_clarification 与 ready 互斥：需要追问时 ready 为 false；可定稿时 need_clarification 为 false。
+4. 只输出一个 JSON 对象，不要 markdown 代码围栏，不要其它说明文字。
+5. routing_hint（必填，单选，小写英文+下划线）：仅依据「用户最初指令」+ 已定稿共识判定主任务类型，
+   不得因 professional_spec 里写了「分析」「JSON」等词就改成分析类。
+   - general：以上都不贴切，或混合任务需下游自行判断
+   - file_directory：主任务是本地目录/文件的整理、重命名、移动、归类、生成清单等，不以读表分析为主
+   - excel_batch_testcase：主任务是多份 Excel 测试用例的批处理、补列、审查、用例工坊类处理
+   - excel_workbook_analysis：主任务是分析工作簿/表结构、字段类型、拆分表格等「表结构分析」
+   - web_search：主任务是联网检索与资料汇总
+
+JSON 结构：
+{"need_clarification": false, "questions": [], "ready": false, "professional_spec": "", "routing_hint": "general"}`;
+    }
+
+    function renderSpecPreview(specData) {
+        const container = document.getElementById('templateContent');
+        const emptyState = document.getElementById('templateEmptyState');
+        if (emptyState) emptyState.remove();
+
+        container.innerHTML = '';
+
+        const statusCard = document.createElement('div');
+        statusCard.className = 'field-card';
+        statusCard.style.borderLeft = '3px solid #f59e0b';
+        statusCard.innerHTML = `<div class="field-label">⏳ 规格化状态</div><div class="field-value" style="color:#92400e;">等待补充信息…</div>`;
+        container.appendChild(statusCard);
+
+        if (specData.routing_hint && specData.routing_hint !== 'general') {
+            const hintInfo = ROUTING_HINT_MAP[specData.routing_hint] || ROUTING_HINT_MAP.general;
+            const hintCard = document.createElement('div');
+            hintCard.className = 'field-card';
+            hintCard.innerHTML = `<div class="field-label">🔀 任务类型推断</div><div class="field-value"><span class="tag-badge" style="background:${hintInfo.bg};color:${hintInfo.color}">${hintInfo.label}</span></div>`;
+            container.appendChild(hintCard);
+        }
+
+        if (specData.questions && specData.questions.length > 0) {
+            const qCard = document.createElement('div');
+            qCard.className = 'field-card';
+            qCard.style.borderLeft = '3px solid #3b82f6';
+            let qHtml = '<div class="field-label">❓ 待确认问题</div><div class="field-value"><ol class="field-value steps-list">';
+            specData.questions.forEach(q => {
+                qHtml += `<li>${escapeHtml(q)}</li>`;
+            });
+            qHtml += '</ol></div>';
+            qCard.innerHTML = qHtml;
+            container.appendChild(qCard);
+        }
+
+        document.getElementById('btnCopyText').disabled = true;
+        document.getElementById('btnCopyJson').disabled = true;
+        container.scrollTop = 0;
+    }
+
+    function renderFinalSpec(specData) {
+        const container = document.getElementById('templateContent');
+        const emptyState = document.getElementById('templateEmptyState');
+        if (emptyState) emptyState.remove();
+
+        container.innerHTML = '';
+
+        const statusCard = document.createElement('div');
+        statusCard.className = 'field-card';
+        statusCard.style.borderLeft = '3px solid #10b981';
+        statusCard.innerHTML = `<div class="field-label">✅ 规格化状态</div><div class="field-value" style="color:#065f46;">已定稿 · 可复制使用</div>`;
+        container.appendChild(statusCard);
+
+        const hintInfo = ROUTING_HINT_MAP[specData.routing_hint] || ROUTING_HINT_MAP.general;
+        const hintCard = document.createElement('div');
+        hintCard.className = 'field-card';
+        hintCard.innerHTML = `<div class="field-label">🔀 任务类型</div><div class="field-value"><span class="tag-badge" style="background:${hintInfo.bg};color:${hintInfo.color}">${hintInfo.label}</span><span style="font-size:11px;color:#94a3b8;margin-left:6px;">${specData.routing_hint}</span></div>`;
+        container.appendChild(hintCard);
+
+        if (specData.professional_spec) {
+            const specLines = specData.professional_spec.split('\n');
+            let currentSection = null;
+            let sectionContent = [];
+
+            for (const line of specLines) {
+                const trimmed = line.trim();
+                if (/^[一二三四五六七八九十]+[、．.]|^[【\[]|^[#]/.test(trimmed) || (trimmed.endsWith('：') || trimmed.endsWith(':')) && trimmed.length < 20) {
+                    if (currentSection) {
+                        container.appendChild(createSectionCard(currentSection, sectionContent));
+                    }
+                    currentSection = trimmed.replace(/^[#]+\s*/, '').replace(/[：:]$/, '');
+                    sectionContent = [];
+                } else if (trimmed) {
+                    sectionContent.push(trimmed);
+                }
+            }
+            if (currentSection) {
+                container.appendChild(createSectionCard(currentSection, sectionContent));
+            } else {
+                container.appendChild(createFieldCard('📝 专业规格书', specData.professional_spec));
+            }
+        }
+
+        const anchorCard = document.createElement('div');
+        anchorCard.className = 'field-card';
+        anchorCard.style.borderLeft = '3px solid #6366f1';
+        anchorCard.style.background = '#f5f3ff';
+        anchorCard.innerHTML = `<div class="field-label">⚓ 原始指令锚点</div><div class="field-value" style="font-size:12px;color:#4c1d95;">${escapeHtml(STATE.originalInstruction)}</div>`;
+        container.appendChild(anchorCard);
+
+        document.getElementById('btnCopyText').disabled = false;
+        document.getElementById('btnCopyJson').disabled = false;
+        container.scrollTop = 0;
+    }
+
+    function createSectionCard(title, contentLines) {
+        const card = document.createElement('div');
+        card.className = 'field-card';
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'field-label';
+        labelDiv.textContent = '📌 ' + title;
+        card.appendChild(labelDiv);
+        const valueDiv = document.createElement('div');
+        valueDiv.className = 'field-value';
+        valueDiv.style.whiteSpace = 'pre-wrap';
+        valueDiv.textContent = contentLines.join('\n');
+        card.appendChild(valueDiv);
+        return card;
+    }
+
+    function createFieldCard(label, value) {
+        const card = document.createElement('div');
+        card.className = 'field-card';
+        card.innerHTML =
+            `<div class="field-label">${escapeHtml(label)}</div><div class="field-value">${escapeHtml(value)}</div>`;
+        return card;
+    }
+
+    function resetTemplatePanel() {
+        const container = document.getElementById('templateContent');
+        container.innerHTML = `
+                    <div class="template-empty-state" id="templateEmptyState">
+                        <span class="icon">📭</span>
+                        <span style="font-size:13px;color:#94a3b8;">在左侧输入任务描述</span>
+                        <span style="font-size:12px;color:#cbd5e1;">AI会通过多轮澄清生成规格书</span>
+                    </div>
+                `;
+        STATE.currentSpec = null;
+        STATE.finalizedSpec = null;
+        document.getElementById('btnCopyText').disabled = true;
+        document.getElementById('btnCopyJson').disabled = true;
+    }
+
+    function copyTemplate(format) {
+        if (!STATE.finalizedSpec) {
+            showToast('⚠️ 没有可复制的规格书', 'error');
+            return;
+        }
+
+        let copyText;
+        if (format === 'json') {
+            copyText = JSON.stringify(STATE.finalizedSpec, null, 2);
+        } else if (format === 'anchor_spec') {
+            const spec = STATE.finalizedSpec.professional_spec || '';
+            const orig = STATE.originalInstruction || '';
+            copyText = `${ANCHOR_TAG}\n（以下为用户最初输入；规划与执行不得弱化或改写其目标与范围；「已定稿规格书」仅作不矛盾之细化。若两处冲突，以本锚点为准。）\n${orig}\n\n${SPEC_TAG}\n${spec}`;
+        } else {
+            const t = STATE.finalizedSpec;
+            const hintInfo = ROUTING_HINT_MAP[t.routing_hint] || ROUTING_HINT_MAP.general;
+            copyText = `📋 任务规格书\n`;
+            copyText += `${'═'.repeat(30)}\n`;
+            copyText += `🔀 任务类型: ${hintInfo.label} (${t.routing_hint})\n`;
+            if (t.professional_spec) copyText += `\n${t.professional_spec}\n`;
+            copyText += `\n${'─'.repeat(30)}\n`;
+            copyText += `⚓ 原始指令: ${STATE.originalInstruction}\n`;
+        }
+
+        navigator.clipboard.writeText(copyText).then(() => {
+            showToast('✅ 已复制到剪贴板', 'success');
+        }).catch(() => {
+            const ta = document.createElement('textarea');
+            ta.value = copyText;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showToast('✅ 已复制到剪贴板', 'success');
+        });
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = String(str);
+        return div.innerHTML;
+    }
+
+    function showToast(message, type = '') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = 'toast ' + type + ' show';
+        clearTimeout(toast._timeout);
+        toast._timeout = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 2200);
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === ',') {
+            e.preventDefault();
+            openSettings();
+        }
+    });
+
+    init();
+
+    document.getElementById('chatMessages').addEventListener('click', function(e) {
+        if (e.target.classList.contains('example-chip')) {
+            useExample(e.target);
+        }
+    });
+
+    console.log('🎯 AI任务规格化工具已就绪');
+    console.log('   - 在左侧输入日常口语描述任务');
+    console.log('   - AI会通过多轮澄清生成专业任务规格书');
+    console.log('   - 支持锚点+规格书格式复制，可直接粘贴给智能体');
+    console.log('   - Ctrl+Enter 发送消息');
+    console.log('   - Ctrl+, 打开设置');
+</script>
+</body>
+</html>
